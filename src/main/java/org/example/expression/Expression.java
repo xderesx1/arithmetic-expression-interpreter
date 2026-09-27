@@ -1,4 +1,8 @@
 package org.example.expression;
 
-public sealed interface Expression permits Binary, CallFunction, Number, Unary, Variable {
+import org.example.service.EvaluationContext;
+
+public sealed interface Expression
+        permits Binary, FunctionCall, Number, Unary, Variable {
+    double evaluate(EvaluationContext context);
 }

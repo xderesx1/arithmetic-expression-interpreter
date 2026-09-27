@@ -1,4 +1,10 @@
 package org.example.expression;
 
-public record Number() implements Expression{
+import org.example.service.EvaluationContext;
+
+public record Number(double value) implements Expression{
+    @Override
+    public double evaluate(EvaluationContext context) {
+        return value;
+    }
 }
