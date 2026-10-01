@@ -1,5 +1,7 @@
 package org.example.operation;
 
+import java.util.Optional;
+
 public enum FunctionOperation {
     MIN("min", 2) {
         @Override
@@ -36,4 +38,14 @@ public enum FunctionOperation {
     }
 
     public abstract double calculate(double... values);
+
+    public static Optional<FunctionOperation> fromName(String name) {
+        for (FunctionOperation operation : values()) {
+            if (operation.getName().equals(name)) {
+                return Optional.of(operation);
+            }
+        }
+
+        return Optional.empty();
+    }
 }

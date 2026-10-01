@@ -4,6 +4,7 @@ import org.example.exception.UnknownVariableException;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class EvaluationContext {
     private final Map<String, Double> variables;
@@ -26,5 +27,9 @@ public class EvaluationContext {
         }
 
         return variables.get(variableName);
+    }
+
+    public Set<String> getVariableNames() {
+        return variables.keySet();
     }
 }
