@@ -18,17 +18,91 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Синтаксический анализатор (парсер) языка арифметических выражений.
+ *
+ * <p>Реализует метод рекурсивного спуска и преобразует последовательность
+ * токенов от {@link Lexer} в дерево выражения — иерархию
+ * {@link Expression}. Каждая грамматическая категория реализована отдельным
+ * приватным методом:
+ *
+ * <pre>
+ * expression      → additive
+ * additive        → multiplicative (('+' | '-') multiplicative)*
+ * multiplicative  → unary (('*' | '/') unary)*
+ * unary           → ('+' | '-') unary | power
+ * power           → primary ('^' unary)?
+ * primary         → NUMBER | IDENTIFIER | functionCall | '(' expression ')'
+ * functionCall    → IDENTIFIER '(' arguments ')'
+ * </pre>
+ *
+ * <p>Поддерживаемый синтаксис:
+ * <ul>
+ *   <li>числовые литералы ({@code 42}, {@code 3.14});</li>
+ *   <li>именованные переменные ({@code x}, {@code value_1});</li>
+ *   <li>бинарные операции {@code +}, {@code -}, {@code *}, {@code /}, {@code ^}
+ *       со стандартными приоритетами;</li>
+ *   <li>унарные {@code +} и {@code -} с приоритетом выше умножения, но ниже
+ *       степени (поэтому {@code -2 ^ 2 = -(2 ^ 2) = -4});</li>
+ *   <li>степень с <b>правой</b> ассоциативностью ({@code 2 ^ 3 ^ 2 = 2 ^ 9 = 512});</li>
+ *   <li>круглые скобки для группировки;</li>
+ *   <li>вызовы встроенных функций {@code min}, {@code max}, {@code abs}
+ *       с фиксированной арностью.</li>
+ * </ul>
+ *
+ * <p>Парсер создаёт внутри конструктора {@link Lexer} и сразу получает от
+ * него список токенов. Экземпляр рассчитан на однократный вызов
+ * {@link #parse()}: повторный вызов вернёт {@code null} или выбросит
+ * исключение из-за сдвинутой позиции чтения.
+ *
+ * <p>Класс не является потокобезопасным.
+ *
+ * @see Lexer
+ * @see Expression
+ */
 public class Parser {
     private final String source;
     private final List<Token> tokens;
     private int current;
 
+    /**
+     * Создаёт парсер для заданной исходной строки.
+     *
+     * <p>Конструктор немедленно выполняет лексический разбор через
+     * {@link Lexer#tokenize()}, поэтому {@link SyntaxException} из лексера
+     * (недопустимый символ, некорректное число) может быть выброшен уже
+     * здесь, до вызова {@link #parse()}.
+     *
+     * @param source исходная строка с выражением; не должна быть {@code null}
+     * @throws NullPointerException если {@code source} равна {@code null}
+     * @throws SyntaxException      если во входной строке есть лексическая
+     *                              ошибка (недопустимый символ, некорректный
+     *                              числовой литерал)
+     */
     public Parser(String source) {
         this.source = Objects.requireNonNull(source, "Source must not be null");
         this.tokens = new Lexer(source).tokenize();
         this.current = 0;
     }
 
+    /**
+     * Разбирает выражение и возвращает его дерево.
+     *
+     * <p>После разбора основного выражения парсер проверяет, что за ним
+     * следует токен {@link TokenType#EOF}. Если остаются лишние токены
+     * (например, {@code 2 + 3 4}), выбрасывается {@link SyntaxException}.
+     *
+     * <p>Метод должен вызываться на экземпляре только один раз.
+     *
+     * @return дерево выражения в виде иерархии {@link Expression}
+     * @throws SyntaxException если во входной строке есть синтаксическая
+     *                         ошибка: неожиданный токен, незакрытая скобка,
+     *                         пропущенный операнд, неизвестная функция,
+     *                         неправильное число аргументов функции, лишние
+     *                         токены после выражения и т. п. Исключение
+     *                         содержит позицию ошибки (нумерация с нуля)
+     *                         и исходную строку для формирования диагностики
+     */
     public Expression parse() {
         Expression expression = parseExpression();
 
