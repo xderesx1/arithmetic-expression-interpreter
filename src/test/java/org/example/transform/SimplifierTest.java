@@ -69,4 +69,28 @@ class SimplifierTest {
         Expression expr = new FunctionCall(FunctionOperation.ABS, List.of(new Number(-5)));
         assertEquals(new Number(5), new Simplifier().simplify(expr));
     }
+
+    @Test
+    void simplifierFoldsMultiplication() {
+        Expression expr = new Binary(new Number(3), BinaryOperation.MULTIPLY,
+                new Binary(new Number(2), BinaryOperation.MULTIPLY, new Variable("x")));
+
+        Expression expected = new Binary(new Number(6), BinaryOperation.MULTIPLY,
+                new Variable("x"));
+
+        assertEquals(expected, new Simplifier().simplify(expr));
+    }
+
+    @Test
+    void simplifierPullsConstantsOutOfNestedMinus() {
+        // 10 - (3 + x) → 7 - x
+        Expression expr = new Binary(
+                new Number(10), BinaryOperation.MINUS,
+                new Binary(new Number(3), BinaryOperation.PLUS, new Variable("x")));
+
+        Expression expected = new Binary(
+                new Number(7), BinaryOperation.MINUS, new Variable("x"));
+
+        assertEquals(expected, new Simplifier().simplify(expr));
+    }
 }

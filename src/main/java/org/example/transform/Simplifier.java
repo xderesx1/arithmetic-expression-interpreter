@@ -75,29 +75,99 @@ public final class Simplifier {
 
     // --- Сложение ---
     private Expression simplifyPlus(Expression left, Expression right) {
-        if (isZero(left)) return right;
-
+        if (isZero(left))  return right;
         if (isZero(right)) return left;
 
-        return foldIfBothNumbers(left, right, BinaryOperation.PLUS);
+        if (isNumber(left) && isNumber(right)) {
+            return foldIfBothNumbers(left, right, BinaryOperation.PLUS);
+        }
+
+        // a + (b + x) → (a+b) + x
+        if (left instanceof Number a
+                && right instanceof Binary rb
+                && rb.operation() == BinaryOperation.PLUS
+                && rb.left() instanceof Number b) {
+            return simplify(new Binary(
+                    new Number(a.value() + b.value()),
+                    BinaryOperation.PLUS,
+                    rb.right()));
+        }
+
+        // (b + x) + a → (a+b) + x
+        if (right instanceof Number a
+                && left instanceof Binary lb
+                && lb.operation() == BinaryOperation.PLUS
+                && lb.left() instanceof Number b) {
+            return simplify(new Binary(
+                    new Number(a.value() + b.value()),
+                    BinaryOperation.PLUS,
+                    lb.right()));
+        }
+
+        return new Binary(left, BinaryOperation.PLUS, right);
     }
 
     private Expression simplifyMinus(Expression left, Expression right) {
+        // x - 0 → x
         if (isZero(right)) return left;
 
+        // 0 - x → -x
         if (isZero(left)) return new Unary(UnaryOperation.NEGATIVE, right);
 
-        return foldIfBothNumbers(left, right, BinaryOperation.MINUS);
+        // Оба числа → вычислить
+        if (isNumber(left) && isNumber(right)) {
+            return foldIfBothNumbers(left, right, BinaryOperation.MINUS);
+        }
+
+        // a - (b + x) → (a-b) - x, когда a и b — константы
+        if (left instanceof Number a
+                && right instanceof Binary rb
+                && rb.operation() == BinaryOperation.PLUS
+                && rb.left() instanceof Number b) {
+            return simplify(new Binary(
+                    new Number(a.value() - b.value()),
+                    BinaryOperation.MINUS,
+                    rb.right()));
+        }
+
+        return new Binary(left, BinaryOperation.MINUS, right);
     }
 
     private Expression simplifyMultiply(Expression left, Expression right) {
+        // Поглощающий ноль
         if (isZero(left) || isZero(right)) return new Number(0);
-
-        if (isOne(left)) return right;
-
+        // Нейтральная единица
+        if (isOne(left))  return right;
         if (isOne(right)) return left;
 
-        return foldIfBothNumbers(left, right, BinaryOperation.MULTIPLY);
+        // Константа * Константа
+        if (isNumber(left) && isNumber(right)) {
+            return foldIfBothNumbers(left, right, BinaryOperation.MULTIPLY);
+        }
+
+        // a * (b * x) → (a*b) * x, когда a и b — константы
+        if (left instanceof Number a
+                && right instanceof Binary rb
+                && rb.operation() == BinaryOperation.MULTIPLY
+                && rb.left() instanceof Number b) {
+            return simplify(new Binary(
+                    new Number(a.value() * b.value()),
+                    BinaryOperation.MULTIPLY,
+                    rb.right()));
+        }
+
+        // (b * x) * a → (a*b) * x, симметричный случай
+        if (right instanceof Number a
+                && left instanceof Binary lb
+                && lb.operation() == BinaryOperation.MULTIPLY
+                && lb.left() instanceof Number b) {
+            return simplify(new Binary(
+                    new Number(a.value() * b.value()),
+                    BinaryOperation.MULTIPLY,
+                    lb.right()));
+        }
+
+        return new Binary(left, BinaryOperation.MULTIPLY, right);
     }
 
     private Expression simplifyDivide(Expression left, Expression right) {
